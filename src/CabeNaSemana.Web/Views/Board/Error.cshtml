@@ -1,0 +1,14 @@
+@model int?
+@{
+    ViewData["Title"] = "Algo saiu do plano";
+}
+
+<main id="main-content" class="page-shell error-shell" tabindex="-1">
+    <section class="error-panel">
+        <span class="error-code" aria-hidden="true">@(Model ?? 500)</span>
+        <p class="eyebrow">Imprevisto na semana</p>
+        <h1>Não conseguimos abrir esta parte do plano.</h1>
+        <p>Nada foi apagado. Volte ao quadro e tente novamente.</p>
+        <a class="primary-button" asp-action="Index">Voltar ao quadro</a>
+    </section>
+</main>

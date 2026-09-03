@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+.git/
+.env
+.env.*
+!.env.example
+.idea/
+.vs/
+.vscode/
+outputs/
+work/
+TestResults/
+src/CabeNaSemana.Web/Data/*.db*

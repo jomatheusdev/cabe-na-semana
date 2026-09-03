@@ -1,0 +1,64 @@
+@model EditTaskViewModel
+@{
+    ViewData["Title"] = "Editar atividade";
+    bool HasErrors(string field) =>
+        ViewData.ModelState.TryGetValue(field, out var entry) && entry.Errors.Count > 0;
+}
+
+<main id="main-content" class="page-shell edit-shell" tabindex="-1">
+    <a class="back-link" asp-action="Index"><span aria-hidden="true">←</span> Voltar ao quadro</a>
+    <section class="edit-panel" aria-labelledby="edit-title">
+        <div class="edit-copy">
+            <p class="eyebrow">Revisar o plano</p>
+            <h1 id="edit-title">Editar atividade</h1>
+            <p>Atualize o prazo, o esforço ou a coluna. A prioridade e a capacidade serão recalculadas automaticamente.</p>
+        </div>
+
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="task-form edit-form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert" tabindex="-1"></div>
+
+            <div class="field field-wide">
+                <label asp-for="Task.Title"></label>
+                <input asp-for="Task.Title" aria-describedby="edit-title-error" aria-invalid="@(HasErrors("Task.Title").ToString().ToLowerInvariant())" />
+                <span asp-validation-for="Task.Title" id="edit-title-error" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Task.DueDate"></label>
+                <input asp-for="Task.DueDate" type="date" aria-invalid="@(HasErrors("Task.DueDate").ToString().ToLowerInvariant())" />
+                <span asp-validation-for="Task.DueDate" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Task.Importance"></label>
+                <select asp-for="Task.Importance" aria-invalid="@(HasErrors("Task.Importance").ToString().ToLowerInvariant())">
+                    <option value="Low">Baixa</option>
+                    <option value="Medium">Média</option>
+                    <option value="High">Alta</option>
+                    <option value="Critical">Crítica</option>
+                </select>
+                <span asp-validation-for="Task.Importance" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Task.EstimatedHours"></label>
+                <div class="input-suffix">
+                    <input asp-for="Task.EstimatedHours" type="number" min="0.25" max="100" step="0.25" aria-invalid="@(HasErrors("Task.EstimatedHours").ToString().ToLowerInvariant())" />
+                    <span aria-hidden="true">h</span>
+                </div>
+                <span asp-validation-for="Task.EstimatedHours" class="field-error" role="alert"></span>
+            </div>
+            <div class="field">
+                <label asp-for="Task.Status"></label>
+                <select asp-for="Task.Status" aria-invalid="@(HasErrors("Task.Status").ToString().ToLowerInvariant())">
+                    <option value="Planning">A planejar</option>
+                    <option value="ThisWeek">Esta semana</option>
+                    <option value="InProgress">Em andamento</option>
+                    <option value="Completed">Concluído</option>
+                </select>
+                <span asp-validation-for="Task.Status" class="field-error" role="alert"></span>
+            </div>
+            <div class="form-actions field-wide">
+                <a class="secondary-button" asp-action="Index">Cancelar</a>
+                <button class="primary-button" type="submit">Salvar alterações</button>
+            </div>
+        </form>
+    </section>
+</main>

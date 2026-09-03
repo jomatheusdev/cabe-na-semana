@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#12233d" />
+    <title>@ViewData["Title"] · Cabe na Semana</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <header class="site-header">
+        <a class="brand" asp-controller="Board" asp-action="Index" aria-label="Cabe na Semana — ir para o quadro">
+            <span class="brand-mark" aria-hidden="true">7</span>
+            <span>
+                <strong>Cabe na Semana</strong>
+                <small>planeje com os pés no chão</small>
+            </span>
+        </a>
+        <span class="local-note">Seus dados ficam neste computador</span>
+    </header>
+
+    @RenderBody()
+
+    <footer class="site-footer">
+        <span>Um plano bom deixa espaço para respirar.</span>
+        <span>Planejamento local · sem conta</span>
+    </footer>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

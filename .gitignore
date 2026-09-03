@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.DS_Store
+.idea/
+.vs/
+.vscode/
+.env
+.env.*
+!.env.example
+TestResults/
+work/
+outputs/
+src/CabeNaSemana.Web/Data/*.db
+src/CabeNaSemana.Web/Data/*.db-shm
+src/CabeNaSemana.Web/Data/*.db-wal
