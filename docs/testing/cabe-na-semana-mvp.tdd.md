@@ -1,73 +1,105 @@
 # Evidência TDD — Cabe na Semana MVP
 
-## Origem
+## Escopo verificado
 
-As jornadas foram derivadas da especificação fornecida na tarefa de construção do MVP; não houve arquivo de plano externo.
+- regras de entidade, prioridade e capacidade;
+- casos de uso de leitura, criação, edição, movimento, exclusão e configuração;
+- persistência EF Core e seleção SQLite/PostgreSQL;
+- contrato HTTP, DTOs, enums e ProblemDetails;
+- formulários, cliente HTTP e estado React;
+- drag-and-drop por mouse e teclado;
+- alternativa acessível pelo menu **Mover**;
+- build e execução real de Next + API + PostgreSQL no Docker.
 
-## Jornadas verificadas
+## Ciclos RED → GREEN desta reestruturação
 
-- Como estudante, quero cadastrar uma atividade válida para enxergá-la no quadro.
-- Como estudante, quero entender por que uma atividade é prioritária.
-- Como estudante, quero saber quais compromissos excedem minha capacidade semanal.
-- Como estudante, quero mover, editar e excluir atividades sem acoplar a regra à interface.
-- Como estudante, quero revisar o quadro em desktop ou mobile, inclusive por teclado.
-
-## Ciclo RED → GREEN
-
-| Etapa | Evidência |
-|---|---|
-| RED | `dotnet test CabeNaSemana.slnx --no-restore` falhou por referências intencionalmente ausentes a `StudyTask`, `PriorityEngine`, `WeeklyCapacityPlanner`, `BoardService` e persistência. O scaffold compilava; a falha era a implementação ainda inexistente. |
-| GREEN inicial | A mesma suíte compilou e expôs dois defeitos: texto de prazo divergente e HTTP 500 causado pelo `RangeAttribute` decimal sob cultura local. |
-| GREEN corrigido | Após ajustar a explicação e usar o overload numérico independente de cultura, 19/19 testes passaram. |
-| Refino | Casos de atualização, exclusão, capacidade válida/inválida, ausências, antiforgery e mapeamento de cartão foram adicionados antes do gate final; 29/29 passaram. |
-| Docker/PostgreSQL | Testes de seleção do provider e health check falharam antes da implementação; depois, 33/33 passaram e a pilha real persistiu cinco tarefas no PostgreSQL. |
+| Ciclo | RED observado | GREEN alcançado |
+|---|---|---|
+| API dedicada | Os testes não compilavam porque `CabeNaSemana.Api`, seus DTOs e suas rotas ainda não existiam. | Controllers, contratos e composition root implementados; CRUD e capacidade passaram no host em memória. |
+| ID da criação | O serviço não devolvia o identificador necessário para `201 Created` e `Location`. | `OperationResult<T>` passou a transportar o ID sem acoplar Application ao HTTP. |
+| Erros HTTP | Faltavam respostas verificáveis para 404, 422, 429, 500 e rota desconhecida. | ProblemDetails padronizado, rate limit e mensagem 500 sem detalhe técnico. |
+| Frontend Next | Quatro suítes falharam porque componentes, estado e cliente HTTP ainda não existiam. | 49 testes Vitest passaram após a implementação mínima e os refinos. |
+| Movimento otimista | O teste exigia que o cartão mudasse imediatamente e voltasse se a API falhasse. | `moveTaskLocally` cria novo snapshot; `BoardApp` mantém e restaura o anterior no erro. |
+| Escrita confirmada, leitura falhou | Um `PATCH` bem-sucedido seguido de falha no `GET` era anunciado como falha da gravação e revertia a tela, abrindo espaço para repetição indevida. | A mutação e a sincronização posterior passaram a ter resultados distintos; o sucesso confirmado não é desfeito e a UI orienta uma nova leitura. |
+| Mutações concorrentes | Cliques rápidos conseguiam iniciar duas gravações sobre o mesmo snapshot e disputar o estado React. | Um lock atômico serializa criação, edição, movimento, exclusão e capacidade; os testes cobrem o bloqueio e a liberação no `finally`. |
+| Foco após mover | Depois do movimento, teclado e leitor de tela podiam perder o ponto de interação porque o cartão mudava de coluna. | O foco retorna para a alça do cartão movido e uma região viva anuncia origem, destino e resultado. |
+| Drag em navegador | O Playwright inicialmente não completava o movimento por teclado. | Um coordinate getter específico do Kanban passou a saltar entre as colunas; mouse e teclado foram comprovados. |
+| Medição do drag por teclado | O `KeyboardSensor` podia receber a seta antes de o dnd-kit disponibilizar `droppableRects`, mantendo o cartão na coluna de origem. | As colunas ganharam `data-kanban-status`; o getter usa a geometria do DOM como fallback e o E2E confirma `PATCH` real. |
+| Lockfile no Docker | O `npm ci` da imagem, com npm 11.19, recusou dependências transitivas ausentes no lock gerado por npm 11.6. | O lock foi regenerado com a mesma versão da imagem e o build dos dois Dockerfiles passou. |
+| Seed one-shot e concorrente | A API podia colidir com uma configuração existente e, depois que a pessoa apagava todas as tarefas, recriar dados de demonstração no próximo boot. Duas inicializações simultâneas também disputavam o seed. | Um marcador em `AppInitialization`, reivindicado com `ON CONFLICT DO NOTHING` dentro de transação e da execution strategy do EF, torna o seed único, preserva uso posterior e tolera concorrência. |
+| Data local do planejamento | Perto da meia-noite UTC, `UtcNow.Date` podia representar o dia seguinte em Fortaleza. | `SystemAppClock` converte o instante via `TimeProvider` para `America/Fortaleza`; testes fixam a fronteira de data. |
+| Healthcheck do frontend | O primeiro teste falhou porque a rota leve `/health` ainda não existia; o Compose verificava `/` e causava renderização e consultas periódicas ao banco. | A rota passou a responder `healthy` sem acessar a API; os logs ficaram silenciosos entre as verificações. |
+| Host e headers do Next | Um `Host` arbitrário era aceito pelo proxy e a resposta não possuía a política de segurança esperada. | Allowlist explícita bloqueia DNS rebinding e o Next envia CSP, `frame-ancestors`, `nosniff`, Referrer-Policy e Permissions-Policy sem expor `X-Powered-By`. |
+| Menor privilégio no PostgreSQL | A verificação retornou código `1`: o papel runtime `cabe_runtime` ainda não existia e a API usava o mesmo superusuário do bootstrap. | O job idempotente criou/reconciliou o papel sem privilégios administrativos, validou login e grants, e a API respondeu `200` conectada por esse papel. |
+| Senha PostgreSQL com delimitadores | Uma senha contendo `;` e `=` podia ser interpretada como novos campos se a connection string fosse concatenada manualmente. | `PostgreSqlConnectionStringFactory` usa `NpgsqlConnectionStringBuilder` com valores separados; a pilha real iniciou e operou com esses caracteres. |
+| Retry do PostgreSQL | A primeira imagem da API falhou porque uma transação manual foi aberta fora da execution strategy resiliente do Npgsql. | A inicialização inteira passou a executar dentro de `CreateExecutionStrategy().ExecuteAsync`, permitindo repetir a unidade transacional com segurança. |
+| Fuso horário no Alpine | A imagem mínima não continha os dados de zona necessários para `America/Fortaleza`. | `tzdata` foi incluído na imagem final e o boot real comprovou a conversão de data. |
 
 ## Especificação executável
 
-| # | Garantia | Alvo | Tipo |
-|---|---|---|---|
-| 1 | Prazo mais próximo aumenta a prioridade com os demais fatores iguais | `PriorityEngineTests` | unidade |
-| 2 | Importância crítica supera importância baixa | `PriorityEngineTests` | unidade |
-| 3 | Prazo vencido é identificado e explicado | `PriorityEngineTests` | unidade |
-| 4 | Trabalho concluído não disputa prioridade ativa | `PriorityEngineTests` | unidade |
-| 5 | Trabalho de menor prioridade que cruza o limite recebe overflow | `WeeklyCapacityPlannerTests` | unidade |
-| 6 | Planejamento e concluído não consomem capacidade semanal | `WeeklyCapacityPlannerTests` | unidade |
-| 7 | Título, esforço, coluna e capacidade inválidos são rejeitados | `StudyTaskTests`, `WeeklyCapacityPlannerTests` | unidade |
-| 8 | Movimento altera coluna e timestamp | `StudyTaskTests`, `BoardServiceTests` | unidade/aplicação |
-| 9 | Criar, editar, excluir e ajustar capacidade persistem pelo caso de uso | `BoardServiceTests` | aplicação |
-| 10 | Tarefa e capacidade fazem round-trip em SQLite real em memória | `EfBoardRepositoryTests` | integração |
-| 11 | A raiz MVC renderiza as quatro colunas | `BoardPageTests` | integração HTTP |
-| 12 | Criar, validar, mover e editar funcionam no navegador real | inspeção local em 1440×900 e 390×844 | ponta a ponta |
+| Camada | Garantias principais | Evidência |
+|---|---|---|
+| Domain | Invariantes, timestamps, pesos de prioridade, atraso, faixas, consumo e overflow. | `StudyTaskTests`, `PriorityEngineTests`, `WeeklyCapacityPlannerTests` |
+| Application | Orquestração, ausência, persistência, relógio e snapshot com quatro colunas. | `BoardServiceTests` |
+| Infrastructure | Round-trip EF, provider configurável, connection string segura e inicialização one-shot concorrente. | `EfBoardRepositoryTests`, `PersistenceRegistrationTests`, `DatabaseInitializerTests` |
+| API | CRUD, `201 + Location`, enum textual, recusa de número, validação, 404/422/429/500 e health. | `ApiContractTests`, `ApiErrorHandlingTests` |
+| Frontend | Formulário, labels, transformação imutável, cliente ProblemDetails, sucesso/erro, rollback, lock, foco, host confiável e healthcheck. | 10 arquivos de teste Vitest |
+| E2E | Arraste com mouse, sensor de teclado, menu alternativo e auditoria Axe. | `tests/e2e/kanban.spec.ts` |
+| Docker | Build reprodutível, três serviços saudáveis, bootstrap encerrado com código `0`, leitura/escrita real e persistência. | Compose executado localmente |
 
-## Comandos e resultados
+## Resultado final reproduzido
 
 ```text
-dotnet test CabeNaSemana.slnx --no-restore
-GREEN: 22/22 testes (checkpoint intermediário)
+dotnet test CabeNaSemana.slnx --configuration Release
+GREEN: 51/51 testes
 
-dotnet test CabeNaSemana.slnx --collect:"XPlat Code Coverage" ...
-GREEN: 29/29; cobertura final Domain + Application: 94,42% linhas, 88,42% branches
+Cobertura de todos os assemblies do backend
+GREEN: 91,44% linhas; 83,22% branches
+Domain: 95,21% linhas
+Application: 92,70% linhas
+Infrastructure: 98,70% linhas
+API: 83,46% linhas
 
-RED Docker/PostgreSQL: `AddPlannerDatabase` inexistente impediu a compilação dos novos testes
+npm test
+GREEN: 49/49 testes em 10 arquivos
 
-GREEN Docker/PostgreSQL: 33/33; imagem construída, dois containers saudáveis e consulta real retornando cinco tarefas
+npm run test:coverage
+GREEN: 88,12% linhas; 87,05% funções; 78,33% branches
+
+npm run test:e2e
+GREEN: 4/4 testes Chromium
+
+npm run lint
+npm run typecheck
+npm run build
+GREEN: todos aprovados; rota / dinâmica
 
 dotnet list CabeNaSemana.slnx package --vulnerable --include-transitive
-GREEN: nenhum pacote vulnerável reportado após override seguro do SQLite nativo
+npm audit
+GREEN: nenhuma vulnerabilidade reportada
 ```
 
-Build Release e `dotnet format --verify-no-changes` também passaram sem warnings ou alterações pendentes de formatação.
+`dotnet format CabeNaSemana.slnx --verify-no-changes` e `git diff --check` também fazem parte do gate final.
 
-## Inspeção ponta a ponta
+## Inspeção real da pilha
 
-- Desktop: 1440×900, quadro em quatro colunas, sem erro de console.
-- Mobile: 390×844, largura de conteúdo igual ao viewport, formulário e cartões em uma coluna.
-- Criação: atividade apareceu no quadro e o total de cartões subiu de 5 para 6.
-- Movimento: atividade mudou de **Esta semana** para **Em andamento** e seu estado de capacidade foi recalculado.
-- Edição: esforço mudou de 2,5 h para 1,5 h e o cartão refletiu `1,5 h`.
-- Validação: título vazio e esforço zero retornaram mensagens específicas; o foco foi para `NewTask_Title` com `aria-invalid=true`.
+- `docker compose build` publicou as imagens `cabe-na-semana-frontend:local` e `cabe-na-semana-api:local`.
+- `docker compose ps -a` mostrou `web`, `api` e `postgres` saudáveis e `postgres-bootstrap` encerrado com código `0`.
+- O PostgreSQL mostrou uma conexão da API por `cabe_runtime`; esse papel possui `NOSUPERUSER`, `NOCREATEDB` e `NOCREATEROLE`.
+- Uma segunda pilha com nome, portas, credenciais e volume temporários confirmou o primeiro boot completo: bootstrap `0`, criação do schema pela API runtime e `GET /api/board` igual a `200`; o volume temporário foi removido depois do teste.
+- A mesma prova passou com uma senha runtime contendo `;` e `=`; `NpgsqlConnectionStringBuilder` recebeu usuário, senha, servidor, porta e banco como valores separados e serializou a connection string corretamente.
+- `GET /` retornou 200.
+- `GET /api/board`, atravessando o rewrite do Next, retornou quatro colunas e cinco tarefas.
+- O PostgreSQL manteve `WeeklyCapacityHours = 15.00` depois da troca de arquitetura.
+- Uma tarefa temporária recebeu `201`, foi movida por `PATCH`, apareceu em `inProgress` e foi apagada com `204`.
+- Um navegador real criou uma tarefa temporária, arrastou o cartão para **Em andamento**, confirmou a persistência e limpou o dado.
+- Desktop 1440 px e mobile 390 px não apresentaram overflow horizontal nem erros de console.
+- Axe não encontrou violações automáticas sérias ou críticas na jornada avaliada.
 
-## Lacunas intencionais
+## Limites dos testes
 
-- A confirmação visual de exclusão não foi acionada no navegador para não apagar dados durante a inspeção; exclusão está coberta no serviço de aplicação.
-- Não há matriz automatizada de múltiplos navegadores. O teste visual usou o navegador embutido baseado em Chromium.
+- Axe automatiza parte da acessibilidade; navegação manual com leitor de tela ainda é recomendada antes de produção.
+- O E2E do frontend usa uma API controlada para ser determinístico; a integração Docker foi exercitada separadamente com os serviços reais.
+- Não há matriz Safari/Firefox nem CI com PostgreSQL efêmero nesta versão.
+- O health endpoint comprova vida do processo, não readiness profunda do banco.
+- Concorrência multiusuário e migrations ainda estão fora do MVP.

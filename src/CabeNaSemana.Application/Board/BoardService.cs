@@ -34,7 +34,7 @@ public sealed class BoardService
     public async Task<StudyTask?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         await _repository.FindAsync(id, cancellationToken);
 
-    public async Task<OperationResult> CreateAsync(
+    public async Task<OperationResult<Guid>> CreateAsync(
         SaveTaskCommand command,
         CancellationToken cancellationToken)
     {
@@ -50,11 +50,11 @@ public sealed class BoardService
 
             await _repository.AddAsync(task, cancellationToken);
             await _repository.SaveChangesAsync(cancellationToken);
-            return OperationResult.Success();
+            return OperationResult.Success(task.Id);
         }
         catch (DomainValidationException exception)
         {
-            return OperationResult.From(exception);
+            return OperationResult.From<Guid>(exception);
         }
     }
 
@@ -66,7 +66,7 @@ public sealed class BoardService
         var task = await _repository.FindAsync(id, cancellationToken);
         if (task is null)
         {
-            return OperationResult.Failure(string.Empty, "Atividade não encontrada.");
+            return OperationResult.NotFound("Atividade não encontrada.");
         }
 
         try
@@ -95,7 +95,7 @@ public sealed class BoardService
         var task = await _repository.FindAsync(id, cancellationToken);
         if (task is null)
         {
-            return OperationResult.Failure(string.Empty, "Atividade não encontrada.");
+            return OperationResult.NotFound("Atividade não encontrada.");
         }
 
         try
@@ -115,7 +115,7 @@ public sealed class BoardService
         var task = await _repository.FindAsync(id, cancellationToken);
         if (task is null)
         {
-            return OperationResult.Failure(string.Empty, "Atividade não encontrada.");
+            return OperationResult.NotFound("Atividade não encontrada.");
         }
 
         _repository.Remove(task);

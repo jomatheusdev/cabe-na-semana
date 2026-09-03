@@ -1,5 +1,11 @@
 **/bin/
 **/obj/
+**/node_modules/
+**/.next/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/*.tsbuildinfo
 .git/
 .env
 .env.*
@@ -10,4 +16,4 @@
 outputs/
 work/
 TestResults/
-src/CabeNaSemana.Web/Data/*.db*
+src/CabeNaSemana.Api/Data/*.db*

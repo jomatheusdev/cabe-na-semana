@@ -1,5 +1,11 @@
 **/bin/
 **/obj/
+**/node_modules/
+**/.next/
+**/coverage/
+**/playwright-report/
+**/test-results/
+**/*.tsbuildinfo
 .DS_Store
 .idea/
 .vs/
@@ -10,6 +16,6 @@
 TestResults/
 work/
 outputs/
-src/CabeNaSemana.Web/Data/*.db
-src/CabeNaSemana.Web/Data/*.db-shm
-src/CabeNaSemana.Web/Data/*.db-wal
+src/CabeNaSemana.Api/Data/*.db
+src/CabeNaSemana.Api/Data/*.db-shm
+src/CabeNaSemana.Api/Data/*.db-wal

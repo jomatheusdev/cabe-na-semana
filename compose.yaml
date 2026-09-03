@@ -1,28 +1,56 @@
 name: cabe-na-semana
 
 services:
-  app:
-    image: cabe-na-semana-web:local
+  web:
+    image: cabe-na-semana-frontend:local
     build:
-      context: .
+      context: ./src/CabeNaSemana.Frontend
       dockerfile: Dockerfile
+      args:
+        API_INTERNAL_URL: http://api:8080
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_HTTP_PORTS: 8080
-      Database__Provider: PostgreSql
-      ConnectionStrings__Planner: Host=postgres;Port=5432;Database=${POSTGRES_DB:?Defina POSTGRES_DB no arquivo .env};Username=${POSTGRES_USER:?Defina POSTGRES_USER no arquivo .env};Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env};Pooling=true
+      API_INTERNAL_URL: http://api:8080
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
     ports:
-      - "127.0.0.1:${APP_PORT:-8080}:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:3000"
     depends_on:
-      postgres:
+      api:
         condition: service_healthy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    volumes:
-      - data_protection_keys:/home/app/.aspnet/DataProtection-Keys
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  api:
+    image: cabe-na-semana-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      Database__Provider: PostgreSql
+      Database__Host: postgres
+      Database__Port: 5432
+      Database__Name: ${POSTGRES_DB:?Defina POSTGRES_DB no arquivo .env}
+      Database__Username: ${APP_DB_USER:?Defina APP_DB_USER no arquivo .env}
+      Database__Password: ${APP_DB_PASSWORD:?Defina APP_DB_PASSWORD no arquivo .env}
+    depends_on:
+      postgres-bootstrap:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health || exit 1"]
       interval: 10s
@@ -48,6 +76,30 @@ services:
       retries: 10
       start_period: 10s
 
+  postgres-bootstrap:
+    image: postgres:17.11-alpine3.24
+    user: postgres
+    environment:
+      PGHOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no arquivo .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no arquivo .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+      APP_DB_USER: ${APP_DB_USER:?Defina APP_DB_USER no arquivo .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Defina APP_DB_PASSWORD no arquivo .env}
+    command: ["/bin/sh", "/opt/cabe/postgres/bootstrap-runtime-role.sh"]
+    volumes:
+      - ./docker/postgres:/opt/cabe/postgres:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
 volumes:
   postgres_data:
-  data_protection_keys:

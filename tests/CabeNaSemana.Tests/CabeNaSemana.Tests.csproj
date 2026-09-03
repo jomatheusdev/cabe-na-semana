@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\src\CabeNaSemana.Domain\CabeNaSemana.Domain.csproj" />
     <ProjectReference Include="..\..\src\CabeNaSemana.Application\CabeNaSemana.Application.csproj" />
     <ProjectReference Include="..\..\src\CabeNaSemana.Infrastructure\CabeNaSemana.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\CabeNaSemana.Web\CabeNaSemana.Web.csproj" />
+    <ProjectReference Include="..\..\src\CabeNaSemana.Api\CabeNaSemana.Api.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 using CabeNaSemana.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace CabeNaSemana.Tests.Infrastructure;
 
@@ -43,5 +44,28 @@ public sealed class PersistenceRegistrationTests
             () => services.AddPlannerDatabase("Unknown", "unused"));
 
         Assert.Contains("Database:Provider", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("forte;com=separadores\"e'aspas")]
+    [InlineData("espaços e símbolos !@#$%&*()")]
+    public void PostgreSqlConnectionStringFactory_PreservesSpecialCharactersInPassword(
+        string password)
+    {
+        var connectionString = PostgreSqlConnectionStringFactory.Create(
+            "postgres",
+            5432,
+            "cabe_na_semana",
+            "cabe_runtime",
+            password);
+
+        var parsed = new NpgsqlConnectionStringBuilder(connectionString);
+
+        Assert.Equal("postgres", parsed.Host);
+        Assert.Equal(5432, parsed.Port);
+        Assert.Equal("cabe_na_semana", parsed.Database);
+        Assert.Equal("cabe_runtime", parsed.Username);
+        Assert.Equal(password, parsed.Password);
+        Assert.True(parsed.Pooling);
     }
 }

@@ -26,6 +26,7 @@ public sealed class BoardServiceTests
         Assert.True(result.IsSuccess);
         Assert.Single(repository.Tasks);
         Assert.Equal("Preparar seminário", repository.Tasks[0].Title);
+        Assert.Equal(repository.Tasks[0].Id, result.Value);
     }
 
     [Fact]
@@ -156,6 +157,7 @@ public sealed class BoardServiceTests
         var result = await service.UpdateAsync(Guid.NewGuid(), command, CancellationToken.None);
 
         Assert.False(result.IsSuccess);
+        Assert.Equal(OperationFailureKind.NotFound, result.FailureKind);
         Assert.Contains(result.Errors.Values.SelectMany(errors => errors), error => error.Contains("não encontrada"));
     }
 

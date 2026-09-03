@@ -1,9 +1,9 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CabeNaSemana.Api/CabeNaSemana.Api.csproj" />
     <Project Path="src/CabeNaSemana.Application/CabeNaSemana.Application.csproj" />
     <Project Path="src/CabeNaSemana.Domain/CabeNaSemana.Domain.csproj" />
     <Project Path="src/CabeNaSemana.Infrastructure/CabeNaSemana.Infrastructure.csproj" />
-    <Project Path="src/CabeNaSemana.Web/CabeNaSemana.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CabeNaSemana.Tests/CabeNaSemana.Tests.csproj" />
